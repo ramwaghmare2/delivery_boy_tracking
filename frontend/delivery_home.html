@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Orders</title>
+    
+    <!-- Bootstrap CSS CDN -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!--<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">-->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body class="container mt-5">
+    <h1 class="text-center">Delivery Orders</h1>
+    
+    <div id="orders"></div>
+    <!-- Orders list will be populated here -->
+    <ul id="ordersList" class="list-group my-4"></ul>
+
+    <!-- Placeholder for Accept/Reject buttons 
+    <div id="actionButtons" class="text-center">
+        <div class="row justify-content-center">
+            <div class="col-md-4 text-center">
+                <button id="acceptOrderBtn" class="btn btn-success w-100 mx-2">Accept Order</button>
+            </div>
+            <div class="col-md-4 text-center">
+                <button id="rejectOrderBtn" class="btn btn-danger w-100 mx-2">Reject Order</button>
+            </div>
+        </div>
+    </div>-->
+    
+    <!-- Socket.IO and custom script -->
+    <!-- Updated Script Section -->
+    
+
+    <script>
+        // Connect to the SocketIO server
+        const socket = io();  
+        socket.on('connect', () => {
+        console.log('Socket connected');
+        });
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+        });
+    
+        // Listen for new orders emitted by the server
+        socket.on('new_order', function(data) {
+            const ordersList = document.getElementById('ordersList');
+            
+            // Create a new list item for the order
+            const orderElement = document.createElement('li');
+            orderElement.className = 'list-group-item d-flex justify-content-between align-items-center';
+            
+            const latitude = data.coordinates.latitude;
+            const longitude = data.coordinates.longitude;
+
+            // Add order details to the list item, including customer information
+            orderElement.innerHTML = `
+                <span>
+                    <strong>Order ID:</strong> ${data.order_id}<br>
+                    <strong>Customer ID:</strong> ${data.customer_id}<br>
+                    <strong>Name:</strong> ${data.name}<br>
+                    <strong>Email:</strong> ${data.email}<br>
+                    <strong>Delivery Location:</strong> ${data.delivery_location}<br>
+                    <strong>Status:</strong> ${data.status}<br>
+                    <span style="display: none;">
+                    <strong>Latitude:</strong> ${data.coordinates.latitude}<br>
+                    <strong>Longitude:</strong> ${data.coordinates.longitude}<br>
+                    </span>
+                </span>
+                <div class="btn-group">
+                    <button class="btn btn-success btn-sm"  onclick="acceptOrder('${data.order_id}', '${data.delivery_location}', '${data.coordinates.latitude}', '${data.coordinates.longitude}')">Accept</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectOrder('${data.order_id}')">Reject</button>
+                </div>
+            `;
+            
+            // Append the order item to the list
+            ordersList.appendChild(orderElement);
+        });
+    
+        // Function to handle order acceptance
+        function acceptOrder(orderId, delivery_location, latitude, longitude) {
+    console.log(`Accepting order ${orderId}`);  // Log for debugging
+
+    // Hardcoded delivery_boy_id for demonstration; replace with actual delivery boy ID
+    const deliveryBoyId = "1";  // Replace with actual delivery boy ID
+    
+
+        // Get the delivery boy's current location (use accurate coordinates instead of hardcoded)
+        const deliveryBoyLat = 18.6537637867729;  // Replace with actual dynamic coordinates
+        const deliveryBoyLng = 73.91097314428585;
+    // API call to accept the order
+    fetch('/accept_order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            order_id: orderId,
+            delivery_boy_id: deliveryBoyId,
+            delivery_boy_location: { latitude: deliveryBoyLat, longitude: deliveryBoyLng }  // Include the delivery boy's location
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(data.message);  // Log the success message
+
+        // Redirect to delivery tracking page with all the necessary parameters
+        window.location.href = `/delivery_tracking?orderId=${orderId}&delivery_location=${encodeURIComponent(delivery_location)}&latitude=${latitude}&longitude=${longitude}`;
+    })
+    .catch(error => {
+        console.error('There was a problem with the fetch operation:', error);
+    });
+}
+
+        // Function to handle order rejection
+        function rejectOrder(orderId) {
+            console.log(`Rejecting order ${orderId}`);
+            // Hardcoded delivery_boy_id for demonstration; replace with actual delivery boy ID
+            const deliveryBoyId = "1"; // Replace with actual delivery boy ID
+
+            // API call to reject the order
+            fetch('/reject_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    order_id: orderId,
+                    delivery_boy_id: deliveryBoyId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data.message); // Log the success message
+                // Optionally, you could remove the order from the displayed list
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+        }
+    </script>
+    
+
+
+    <!-- Bootstrap JS, Popper.js, and jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
