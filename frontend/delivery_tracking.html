@@ -6,7 +6,7 @@
     <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
     <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
     <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
-    <title>Delivery Boy Route</title>
+    <title>Delivery Boy</title>
     <style>
         #mapContainer {
             width: 100%;
@@ -19,143 +19,137 @@
     </style>
 </head>
 <body>
-    <h1 class="text-center">Delivery Route</h1>
+    <h1 class="text-center">Delivery Boy Side Map View</h1>
+    <div id="routeInfo" class="routeInfo"></div>
     <div id="mapContainer"></div>
-    <div id="routeInfo"></div>
-    
+
     <script>
         // Initialize the HERE Maps platform
         var platform = new H.service.Platform({
             apikey: 'y24ahK7VnVrMkaDdBKCQVKKsNi2P8zTp3E-IHzmyfrQ' // Replace with your API key
         });
         var defaultLayers = platform.createDefaultLayers();
-        
+
         // Initialize the map instance
         var map = new H.Map(
             document.getElementById('mapContainer'),
             defaultLayers.vector.normal.map,
             {
                 zoom: 14,
-                center: { lat: 18.6537637867729, lng: 73.91097314428585 } // Delivery boy's initial location
+                center: { lat: 0, lng: 0 } // Default center, will update with actual location
             }
         );
-        
+
         // Enable map events
         var mapEvents = new H.mapevents.MapEvents(map);
         var behavior = new H.mapevents.Behavior(mapEvents);
         var ui = H.ui.UI.createDefault(map, defaultLayers);
-        
+
         // Parse latitude and longitude from Flask template (user location)
-        var latitudeStr = "{{ latitude|safe }}";
-        var longitudeStr = "{{ longitude|safe }}";
-        var userAddress = "{{ delivery_location|safe }}";
-        
-        // Convert the latitude and longitude into floats
+        var latitudeStr = "{{ latitude|safe }}";  // User's latitude from Flask
+        var longitudeStr = "{{ longitude|safe }}";  // User's longitude from Flask
+        var userAddress = "{{ delivery_location|safe }}";  // User's address from Flask
+
+        // Convert the latitude and longitude into floats (user location)
         var userLat = parseFloat(latitudeStr.trim());
         var userLng = parseFloat(longitudeStr.trim());
-        
+
         // Ensure coordinates are valid numbers
         if (!isNaN(userLat) && !isNaN(userLng)) {
-            // Set map center to user's location
-            map.setCenter({ lat: userLat, lng: userLng });
-        
             // Add marker for the user's delivery location
             var userMarker = new H.map.Marker({ lat: userLat, lng: userLng });
             map.addObject(userMarker);
-        
+            
             // Add user info bubble
             var userInfoBubble = new H.ui.InfoBubble(userMarker.getGeometry(), { content: userAddress });
             ui.addBubble(userInfoBubble);
         } else {
             console.error("Invalid user latitude or longitude:", userLat, userLng);
         }
-        
-        // Delivery boy's initial location
-        var deliveryBoyCoords = { lat: 18.6537637867729, lng: 73.91097314428585 };
-        
-        // Delivery boy marker with custom icon
-        var deliveryBoyIcon = new H.map.Icon('https://png.pngtree.com/png-clipart/20200701/original/pngtree-delivery-boy-with-mask-riding-bike-vector-png-image_5354632.jpg', {
-            size: { w: 50, h: 50 },
-            anchor: { x: 25, y: 50 }
-        });
-        var deliveryBoyMarker = new H.map.Marker(deliveryBoyCoords, { icon: deliveryBoyIcon });
-        map.addObject(deliveryBoyMarker);
-        
-        // Add delivery boy info bubble
-        var deliveryBoyInfoBubble = new H.ui.InfoBubble(deliveryBoyMarker.getGeometry(), {
-            content: "Delivery Boy Location"
-        });
-        ui.addBubble(deliveryBoyInfoBubble);
-        
-        // Define routeLine variable in global scope
-        var routeLine;
-        
-        // Function to calculate and display the route
-        function calculateRoute(startCoords, endCoords) {
-            var router = platform.getRoutingService();
-        
+
+        // Get the delivery boy's actual location using the Geolocation API
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                var deliveryBoyCoords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                // Update map center and marker with actual location
+                map.setCenter(deliveryBoyCoords);
+
+                // Add marker for the delivery boy with custom icon
+                var deliveryBoyIcon = new H.map.Icon('https://png.pngtree.com/png-clipart/20200701/original/pngtree-delivery-boy-with-mask-riding-bike-vector-png-image_5354632.jpg', {
+                    size: { w: 50, h: 50 },
+                    anchor: { x: 25, y: 50 }
+                });
+                var deliveryBoyMarker = new H.map.Marker(deliveryBoyCoords, { icon: deliveryBoyIcon });
+                map.addObject(deliveryBoyMarker);
+
+                // Add delivery boy info bubble
+                var deliveryBoyInfoBubble = new H.ui.InfoBubble(deliveryBoyMarker.getGeometry(), {
+                    content: "Delivery Boy Location"
+                });
+                ui.addBubble(deliveryBoyInfoBubble);
+
+                // Call the function to calculate and display the routes
+                calculateRoutes(deliveryBoyCoords, { lat: userLat, lng: userLng });
+            }, (error) => {
+                alert("Error fetching location: " + error.message);
+                console.error("Geolocation error:", error);
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+
+        // Function to calculate and display multiple routes
+        function calculateRoutes(startCoords, endCoords) {
+            var router = platform.getRoutingService(null, 8);  // Use version 8 of Routing API
+
             var routeParams = {
                 'routingMode': 'fast',
                 'transportMode': 'car',
-                'origin': `${startCoords.lat},${startCoords.lng}`,
-                'destination': `${endCoords.lat},${endCoords.lng}`,
+                'origin': `${startCoords.lat},${startCoords.lng}`,  // Start point (delivery boy)
+                'destination': `${endCoords.lat},${endCoords.lng}`,  // Destination point (user)
+                'alternatives': 2,  // Request 3 alternative routes
                 'return': 'polyline,summary'
             };
-        
-            // Use encodeURIComponent for parameters
-            var url = `https://router.hereapi.com/v8/routes?${Object.entries(routeParams)
-                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-                .join('&')}&apikey=${encodeURIComponent(platform.getApiKey())}`;
-        
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok ' + response.statusText);
-                    }
-                    return response.json();
-                })
-                .then(result => {
-                    // Clear any existing route
-                    if (routeLine) {
-                        map.removeObject(routeLine);
-                    }
-        
-                    if (result.routes.length) {
-                        var route = result.routes[0];
-                        var routeShape = route.sections[0].polyline;
-        
-                        // Decode polyline
-                        var lineString = H.geo.LineString.fromFlexiblePolyline(routeShape);
-        
-                        // Create a route line and add it to the map
-                        routeLine = new H.map.Polyline(lineString, {
-                            style: { strokeColor: 'blue', lineWidth: 5 }
+
+            // Call the Routing API
+            router.calculateRoute(
+                routeParams,
+                (result) => {
+                    var routeLines = [];
+                    if (result.routes.length > 0) {
+                        result.routes.forEach((route, index) => {
+                            var routeShape = route.sections[0].polyline;
+                            var lineString = H.geo.LineString.fromFlexiblePolyline(routeShape);
+                            var routeLine = new H.map.Polyline(lineString, {
+                                style: { strokeColor: index === 0 ? 'blue' : 'gray', lineWidth: 5 }
+                            });
+                            map.addObject(routeLine);
+                            routeLines.push(routeLine);
+
+                            // Event listener to select a route
+                            routeLine.addEventListener('tap', () => {
+                                routeLine.setStyle({ strokeColor: 'blue', lineWidth: 7 });
+                                var distance = route.sections[0].summary.length / 1000;
+                                var travelTime = route.sections[0].summary.duration / 60;
+                                document.getElementById('routeInfo').innerHTML = `Selected Route - Distance: ${distance.toFixed(2)} km | Travel Time: ${Math.round(travelTime)} minutes`;
+                            });
                         });
-                        map.addObject(routeLine);
-        
-                        // Zoom map to fit the route
-                        map.getViewModel().setLookAtData({
-                            bounds: routeLine.getBoundingBox()
-                        });
-        
-                        // Get and display route summary: distance and travel time
-                        var distance = route.sections[0].summary.length / 1000; // Distance in kilometers
-                        var travelTime = route.sections[0].summary.duration / 60; // Time in minutes
-        
-                        document.getElementById('routeInfo').innerHTML = `Distance: ${distance.toFixed(2)} km | Travel Time: ${Math.round(travelTime)} minutes`;
+
+                        map.getViewModel().setLookAtData({ bounds: routeLines[0].getBoundingBox() });
                     } else {
                         console.error('No routes found');
                     }
-                })
-                .catch(error => {
+                },
+                (error) => {
                     alert('Error calculating route: ' + error.message);
                     console.error('Error details:', error);
-                });
+                }
+            );
         }
-        
-        // Call the function to calculate and display the route
-        calculateRoute(deliveryBoyCoords, { lat: userLat, lng: userLng });
-        </script>
-        
+    </script>
 </body>
 </html>
