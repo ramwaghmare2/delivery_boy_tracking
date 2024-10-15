@@ -67,36 +67,72 @@
             console.error("Invalid user latitude or longitude:", userLat, userLng);
         }
 
+        var deliveryBoyMarker;  // Marker for delivery boy's location
+
+        // Function to update delivery boy's position on the map
+        function updateDeliveryBoyLocation(coords) {
+            if (deliveryBoyMarker) {
+                deliveryBoyMarker.setGeometry(coords);  // Update the marker's position
+            } else {
+                // Add marker for the delivery boy with custom icon if not already set
+                var deliveryBoyIcon = new H.map.Icon('https://png.pngtree.com/png-clipart/20200701/original/pngtree-delivery-boy-with-mask-riding-bike-vector-png-image_5354632.jpg', {
+                    size: { w: 50, h: 50 },
+                    anchor: { x: 25, y: 50 }
+                });
+                deliveryBoyMarker = new H.map.Marker(coords, { icon: deliveryBoyIcon });
+                map.addObject(deliveryBoyMarker);
+            }
+
+            // Update map center to follow the delivery boy's location
+            map.setCenter(coords);
+        }
+
+        // Send coordinates to backend using POST request
+        function sendCoordsToBackend(coords) {
+            fetch('/update_delivery_location', {  // Flask route for updating location
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    delivery_boy_id:1,
+                    latitude: coords.lat,
+                    longitude: coords.lng
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error("Error sending coordinates to the backend");
+                }
+                return response.json();
+            }).then(data => {
+                console.log("Location updated on the backend:", data);
+            }).catch(error => {
+                console.error("Failed to send coordinates:", error);
+            });
+        }
+
         // Get the delivery boy's actual location using the Geolocation API
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
+            navigator.geolocation.watchPosition((position) => {
                 var deliveryBoyCoords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
 
-                // Update map center and marker with actual location
-                map.setCenter(deliveryBoyCoords);
+                // Update delivery boy's location on the map
+                updateDeliveryBoyLocation(deliveryBoyCoords);
 
-                // Add marker for the delivery boy with custom icon
-                var deliveryBoyIcon = new H.map.Icon('https://png.pngtree.com/png-clipart/20200701/original/pngtree-delivery-boy-with-mask-riding-bike-vector-png-image_5354632.jpg', {
-                    size: { w: 50, h: 50 },
-                    anchor: { x: 25, y: 50 }
-                });
-                var deliveryBoyMarker = new H.map.Marker(deliveryBoyCoords, { icon: deliveryBoyIcon });
-                map.addObject(deliveryBoyMarker);
+                // Send coordinates to the backend
+                sendCoordsToBackend(deliveryBoyCoords);
 
-                // Add delivery boy info bubble
-                var deliveryBoyInfoBubble = new H.ui.InfoBubble(deliveryBoyMarker.getGeometry(), {
-                    content: "Delivery Boy Location"
-                });
-                ui.addBubble(deliveryBoyInfoBubble);
-
-                // Call the function to calculate and display the routes
+                // Calculate and display the route between delivery boy and user
                 calculateRoutes(deliveryBoyCoords, { lat: userLat, lng: userLng });
+
             }, (error) => {
                 alert("Error fetching location: " + error.message);
                 console.error("Geolocation error:", error);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
             });
         } else {
             alert("Geolocation is not supported by this browser.");
