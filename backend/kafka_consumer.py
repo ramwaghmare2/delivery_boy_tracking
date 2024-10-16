@@ -9,7 +9,7 @@ from flask_socketio import SocketIO,emit
 def get_kafka_consumer():
     return KafkaConsumer(
         'order_topic',
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers='kafka:9092',
         group_id='delivery_boy_group',
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest'  # Start from earliest if no offset is found

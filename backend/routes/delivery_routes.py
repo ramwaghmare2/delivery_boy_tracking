@@ -14,7 +14,7 @@ def get_kafka_consumer():
         try:
             consumer = KafkaConsumer(
                 'order_topic',
-                bootstrap_servers='localhost:9092',
+                bootstrap_servers='kafka:9092',
                 value_deserializer=lambda v: json.loads(v.decode('utf-8')),
                 auto_offset_reset='earliest'
             )
@@ -34,7 +34,7 @@ def get_kafka_producer():
     for attempt in range(5):  # Retry up to 5 times
         try:
             producer = KafkaProducer(
-                bootstrap_servers='localhost:9092',
+                bootstrap_servers='kafka:9092',
                 value_serializer=lambda v: json.dumps(v).encode('utf-8')
             )
             break  # Exit the loop if producer is successfully created
