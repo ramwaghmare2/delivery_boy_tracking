@@ -1,4 +1,4 @@
-from flask import Flask, render_template,request
+from flask import Flask, render_template,request,jsonify
 from routes import delivery_routes
 from flask_migrate import Migrate
 from models import init_db, db, create_tables
@@ -48,6 +48,27 @@ def handle_connect():
 def start_kafka_consumer():
     with app.app_context():
         consume_orders(socketio)
+
+@app.route('/update_delivery_location', methods=['POST'])
+def update_delivery_location():
+    data = request.get_json()
+    delivery_boy_id = data.get('delivery_boy_id')  # Capture delivery boy's ID
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    # Perform database update or process the coordinates as required
+    print(f"Delivery boy {delivery_boy_id}'s updated location: {latitude}, {longitude}")
+
+    # Call Kafka producer to send location update
+    from kafka_producer import produce_status_update
+    produce_status_update('delivery_location_updates', {
+        'delivery_boy_id': delivery_boy_id,
+        'latitude': latitude,
+        'longitude': longitude
+    })
+
+    return jsonify({"status": "success"}), 200
+
 
 if __name__ == "__main__":
     with app.app_context():

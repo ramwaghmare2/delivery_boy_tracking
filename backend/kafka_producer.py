@@ -4,7 +4,7 @@ import requests
 
 def get_kafka_producer():
     return KafkaProducer(
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers='kafka:9092',
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
 
@@ -15,7 +15,7 @@ def produce_status_update(topic, message):
     producer.flush()
 
 def send_location_update(lat, lng):
-    url = 'http://localhost:5000/update_location'  # Flask backend endpoint
+    url = 'http://13.232.113.128/update_location'  # Flask backend endpoint
     location_data = {'lat': lat, 'lng': lng}
     
     try:
