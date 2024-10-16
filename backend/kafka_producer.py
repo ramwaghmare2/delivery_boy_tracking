@@ -4,7 +4,7 @@ import requests
 
 def get_kafka_producer():
     return KafkaProducer(
-        bootstrap_servers='kafka:9092',
+        bootstrap_servers='delivery_boy_kafka:9094',
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
 

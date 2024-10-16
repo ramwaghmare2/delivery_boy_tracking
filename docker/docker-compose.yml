@@ -1,5 +1,5 @@
 services:
-  delivery_boy_service:
+  delivery_boy_tracking:
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -7,59 +7,56 @@ services:
       - ../frontend:/frontend
       - ../backend:/backend
     ports:
-      - "8080:5001"
-    
+      - "8080:5001"  # Flask API port
+
     depends_on:
-      kafka:
-        condition: service_healthy
-      zookeeper:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
+      - delivery_boy_kafka
+      - delivery_boy_zookeeper
+      - delivery_boy_mysql
     environment:
       - FLASK_ENV=production
     command: >
-      sh -c "sleep 10 && pip install -r requirements.txt &&
+      sh -c "sleep 20 && pip install -r requirements.txt &&
              flask run --host=0.0.0.0 --port=5001"
 
-  kafka:
-    image: wurstmeister/kafka
+  delivery_boy_kafka:
+    image: wurstmeister/kafka:latest
     ports:
-      - "9092:9092"
-      - "9093:9093"
+      - "9094:9092"  # Kafka external port
+      - "9095:9093"  # Kafka secondary port
     environment:
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://delivery_boy_kafka:9094
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094
+      KAFKA_ZOOKEEPER_CONNECT: delivery_boy_zookeeper:2181
       KAFKA_BROKER_ID: 1
 
     depends_on:
-      - zookeeper
+      - delivery_boy_zookeeper
     healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "zookeeper:2181"]
+      test: ["CMD", "kafka-topics.sh", "--list", "--zookeeper", "delivery_boy_zookeeper:2181"]
       interval: 10s
       timeout: 10s
       retries: 10
 
-  zookeeper:
+  delivery_boy_zookeeper:
     image: wurstmeister/zookeeper:latest
     ports:
-      - "2181:2181"
+      - "2182:2181"  # Zookeeper port
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2182 | grep imok"]
       interval: 10s
       timeout: 30s
       retries: 10
 
-  mysql:
+  delivery_boy_mysql:
     image: mysql:latest
     ports:
-      - "3307:3306"
+      - "3308:3306"  # MySQL port
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: delivery_boy_tracking
     volumes:
-      - mysql_data:/var/lib/mysql
+      - delivery_boy_mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "--silent"]
       interval: 10s
@@ -67,4 +64,4 @@ services:
       retries: 10
 
 volumes:
-  mysql_data:
+  delivery_boy_mysql_data:
