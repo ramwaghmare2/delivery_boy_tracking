@@ -119,9 +119,6 @@ def reject_order_route():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-#@bp.route("/accept_order", methods=["POST"])
-#def accept_order_route():
-   #    return render_template('delivery_tracking.html')
 
 @bp.route("/update_status", methods=["POST"])
 def update_status_route():
