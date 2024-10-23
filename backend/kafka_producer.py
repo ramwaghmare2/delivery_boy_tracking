@@ -17,7 +17,7 @@ def produce_status_update(topic, message):
 def send_location_update(lat, lng):
     url = 'http://localhost:5000/update_location'  # Flask backend endpoint
     location_data = {'lat': lat, 'lng': lng}
-    
+
     try:
         response = requests.post(url, json=location_data)
         if response.status_code == 200:
