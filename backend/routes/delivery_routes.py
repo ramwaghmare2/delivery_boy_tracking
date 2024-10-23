@@ -14,7 +14,7 @@ def get_kafka_consumer():
         try:
             consumer = KafkaConsumer(
                 'order_topic',
-                bootstrap_servers='delivery_boy_kafka:9094',
+                bootstrap_servers='localhost:9092',
                 value_deserializer=lambda v: json.loads(v.decode('utf-8')),
                 auto_offset_reset='earliest'
             )
@@ -34,7 +34,7 @@ def get_kafka_producer():
     for attempt in range(5):  # Retry up to 5 times
         try:
             producer = KafkaProducer(
-                bootstrap_servers='delivery_boy_kafka:9094',
+                bootstrap_servers='localhost:9092',
                 value_serializer=lambda v: json.dumps(v).encode('utf-8')
             )
             break  # Exit the loop if producer is successfully created
@@ -119,9 +119,6 @@ def reject_order_route():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-#@bp.route("/accept_order", methods=["POST"])
-#def accept_order_route():
-   #    return render_template('delivery_tracking.html')
 
 @bp.route("/update_status", methods=["POST"])
 def update_status_route():
